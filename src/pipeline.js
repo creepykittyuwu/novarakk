@@ -206,7 +206,7 @@ function refToPreviewDataUrl(ref) {
  */
 function buildRequestSnapshot({ prompt, style, references, matchedAdditionalRefs, options, provider, settings }) {
     const includeReferencePromptBlocks = !(settings.apiType === 'novelai'
-        && settings.novelaiEnableReferences === false);
+        && !provider.supportsReferences(settings));
     let snapshotPrompt = buildFinalGenerationPrompt(
         prompt,
         style,
@@ -443,7 +443,7 @@ export async function generateImageWithRetry(prompt, style, onStatusUpdate, opti
     const baseDelay = settings.retryDelay;
 
     const novelaiReferencesDisabled = settings.apiType === 'novelai'
-        && settings.novelaiEnableReferences === false;
+        && !provider.supportsReferences(settings);
     const matchedAdditionalRefs = novelaiReferencesDisabled
         ? []
         : getMatchedAdditionalReferences(prompt);

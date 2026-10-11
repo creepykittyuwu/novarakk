@@ -24,6 +24,7 @@ import {
     parseImageDataUrl,
 } from './utils.js';
 import { callVisionApi, DEFAULT_VISION_PROMPT } from './vision.js';
+import { renderWardrobeBulkCleanup } from './wardrobeBulkUi.js';
 
 // ── Constants ──
 
@@ -749,6 +750,9 @@ async function swMigrateToSharedUnlocked(side, { silent = false } = {}) {
                 }
             }
             if (!stored) item.base64 = o.base64 || '';
+            // Batch cleanup can run while an image import is awaiting storage.
+            // Do not re-add a source removed during that await.
+            if (s.sharedDeletedSourceIds[side].includes(String(o.id)) || swSharedHasSrc(side, o.id)) continue;
             cfg.list().push(item);
             done++;
             if (done % 5 === 0) swSave();
@@ -1225,7 +1229,7 @@ export function swOpenModal() {
         <div class="sw-modal-header">
             <span class="sw-modal-title">Гардероб — <b>${esc(cn)}</b></span>
             <div class="sw-modal-header-btns">
-                <div class="sw-header-btn sw-btn-maint" title="Управление гардеробом: распределение, дубликаты и чистка"><i class="fa-solid fa-toolbox"></i></div>
+                <div class="sw-header-btn sw-btn-maint" title="Управление гардеробом: массовое удаление, распределение, дубликаты и чистка"><i class="fa-solid fa-toolbox"></i></div>
                 <div class="sw-header-btn sw-btn-quick" title="Быстрые настройки"><i class="fa-solid fa-sliders"></i></div>
                 <div class="sw-modal-close" title="Закрыть"><i class="fa-solid fa-xmark"></i></div>
             </div>
@@ -2362,6 +2366,7 @@ function swOpenMaintenance(tab) {
         <div class="sw-maint-tabs">
             <div class="sw-maint-tab" data-mt="dedup"><i class="fa-solid fa-clone"></i> Дубликаты</div>
             <div class="sw-maint-tab" data-mt="distribution"><i class="fa-solid fa-people-arrows"></i> Распределение</div>
+            <div class="sw-maint-tab" data-mt="bulk"><i class="fa-solid fa-trash-can"></i> Удаление нарядов</div>
             <div class="sw-maint-tab" data-mt="cleanup"><i class="fa-solid fa-broom"></i> Чистка файлов</div>
         </div>
         <div class="sw-cleanup-body" id="sw-maint-body"></div>`;
@@ -2386,13 +2391,25 @@ function swOpenMaintenance(tab) {
     function show(which) {
         if (which === curTab) return;
         curTab = which;
+        body.classList.toggle('sw-bulk-body', which === 'bulk');
         for (const t of panel.querySelectorAll('.sw-maint-tab')) t.classList.toggle('sw-maint-tab-active', t.dataset.mt === which);
-        if (which === 'cleanup') swRenderCleanup(body);
+        if (which === 'bulk') renderWardrobeBulkCleanup(body, {
+            getSettings: swGetSettings,
+            getMetadata: () => ({ personas: SillyTavern.getContext().powerUserSettings?.personas || {} }),
+            getTypes: swTypes,
+            imageSrc: swImgSrc,
+            onChange() {
+                swSave(); swPage = 0;
+                if (swOpen) swRender();
+                swUpdatePromptInjection(); swInjectBarBtn();
+            },
+        });
+        else if (which === 'cleanup') swRenderCleanup(body);
         else if (which === 'distribution') swRenderDistribution(body);
         else swRenderDedup(body);
     }
     for (const t of panel.querySelectorAll('.sw-maint-tab')) t.addEventListener('click', () => show(t.dataset.mt));
-    show(['cleanup', 'distribution'].includes(tab) ? tab : 'dedup');
+    show(['cleanup', 'distribution', 'bulk'].includes(tab) ? tab : 'dedup');
 }
 
 function swRenderCleanup(body) {

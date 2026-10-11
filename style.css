@@ -2,6 +2,64 @@
 
 /* Inline Image Generation Extension Styles */
 
+/* Read-only parameter help: a small question mark and an unclipped bubble. */
+.iig-param-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    padding: 0;
+    margin: 0 0 0 4px;
+    border: 1px solid var(--SmartThemeBorderColor, #666);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--SmartThemeBodyColor, #ddd);
+    font: 600 13px/1 sans-serif;
+    cursor: help;
+    opacity: 0.75;
+    touch-action: manipulation;
+}
+
+.iig-param-help:hover,
+.iig-param-help:focus-visible,
+.iig-param-help[aria-expanded="true"] {
+    opacity: 1;
+    background: var(--SmartThemeQuoteColor, #465);
+}
+
+.iig-param-help:focus-visible {
+    outline: 2px solid var(--SmartThemeBodyColor, #ddd);
+    outline-offset: 2px;
+}
+
+.iig-param-tooltip {
+    position: fixed;
+    inset: auto;
+    z-index: 2147483647;
+    box-sizing: border-box;
+    width: 310px;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid var(--SmartThemeBorderColor, #666);
+    border-radius: 10px;
+    background: var(--SmartThemeBlurTintColor, #222);
+    color: var(--SmartThemeBodyColor, #eee);
+    box-shadow: 0 6px 24px #0008;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    font-size: 13px;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    overflow: auto;
+    overflow-wrap: anywhere;
+    overscroll-behavior: contain;
+}
+
 /* Settings Panel */
 .iig-settings {
     display: flex;
@@ -3754,6 +3812,73 @@
 }
 
 /* ── Wardrobe distribution ── */
+
+/* Bulk outfit cleanup: only the cards scroll; filters and actions stay visible. */
+.sw-cleanup-body.sw-bulk-body { display: flex; overflow: hidden; padding: 12px; }
+.sw-bulk-cleanup { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; min-width: 0; }
+.sw-bulk-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; flex-shrink: 0; }
+.sw-bulk-filters label { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 11px; }
+.sw-bulk-filters select, .sw-bulk-filters input {
+    width: 100%; min-width: 0; box-sizing: border-box; margin: 0;
+    font-size: 12px; padding: 6px 8px;
+}
+.sw-bulk-protect { display: flex; align-items: center; gap: 7px; flex-shrink: 0; font-size: 12px; }
+.sw-bulk-protect input { flex: 0 0 auto; width: auto; margin: 0; }
+.sw-bulk-hint { margin: 0; font-size: 10.5px; line-height: 1.4; opacity: 0.7; }
+.sw-bulk-tools { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
+.sw-bulk-cleanup button {
+    color: var(--SmartThemeBodyColor, #ddd); background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--SmartThemeBorderColor, #555); border-radius: 6px;
+    padding: 6px 9px; min-width: 0; cursor: pointer; font-size: 11px;
+    touch-action: manipulation;
+}
+.sw-bulk-cleanup button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); }
+.sw-bulk-cleanup button:focus-visible { outline: 2px solid var(--SmartThemeBodyColor, #ddd); outline-offset: 2px; }
+.sw-bulk-cleanup button:disabled { opacity: 0.4; cursor: default; }
+.sw-bulk-summary { font-size: 11px; flex-shrink: 0; }
+.sw-bulk-scroll { flex: 1 1 auto; min-height: 80px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.sw-bulk-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 2px; }
+.sw-bulk-cleanup .sw-bulk-card { display: flex; flex-direction: column; gap: 3px; padding: 0 0 6px; overflow: hidden; text-align: left; }
+.sw-bulk-preview { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 4 / 3; background: #0003; }
+.sw-bulk-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.sw-bulk-card b, .sw-bulk-card small { display: block; width: 100%; box-sizing: border-box; padding: 0 7px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sw-bulk-card b { font-size: 11px; }
+.sw-bulk-card small { font-size: 9px; opacity: 0.7; }
+.sw-bulk-cleanup .sw-bulk-card.sw-bulk-selected { border-color: var(--SmartThemeBodyColor, #ddd); box-shadow: inset 0 0 0 1px var(--SmartThemeBodyColor, #ddd); }
+.sw-bulk-check { display: none; position: absolute; top: 5px; right: 5px; padding: 5px; border-radius: 4px; background: #eee; color: #111; font-size: 10px; }
+.sw-bulk-selected .sw-bulk-check { display: block; }
+.sw-bulk-active { position: absolute; bottom: 4px; left: 4px; padding: 3px 5px; font-size: 9px; color: #fff; background: #000b; border-radius: 4px; }
+.sw-bulk-cleanup .sw-bulk-protected:disabled { opacity: 0.65; }
+.sw-bulk-empty { grid-column: 1 / -1; padding: 24px 10px; text-align: center; font-size: 12px; opacity: 0.7; }
+.sw-bulk-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; flex-shrink: 0; }
+.sw-bulk-pages { display: flex; align-items: center; gap: 4px; }
+.sw-bulk-pages button { min-width: 28px; padding: 5px; }
+.sw-bulk-pages button[aria-current="page"] { background: var(--SmartThemeQuoteColor, #465); border-color: var(--SmartThemeBodyColor, #ddd); }
+.sw-bulk-pagination label { display: flex; align-items: center; gap: 5px; font-size: 10px; }
+.sw-bulk-pagination select { width: auto; min-width: 42px; font-size: 11px; }
+.sw-bulk-footer { display: flex; flex-direction: column; gap: 5px; border-top: 1px solid var(--SmartThemeBorderColor, #555); padding-top: 8px; flex-shrink: 0; }
+.sw-bulk-status { font-size: 10px; opacity: 0.75; }
+.sw-bulk-footer > div { display: flex; justify-content: flex-end; gap: 8px; }
+.sw-bulk-cleanup .sw-bulk-delete { background: #962828; color: #fff; border-color: #ae4040; }
+.sw-bulk-cleanup .sw-bulk-delete:hover:not(:disabled) { background: #b53030; }
+@media (max-width: 600px) {
+    .sw-maint-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex-shrink: 0; }
+    .sw-cleanup-body.sw-bulk-body { padding: 8px; }
+    .sw-bulk-cleanup { gap: 6px; }
+    .sw-bulk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+    .sw-bulk-hint { font-size: 9px; }
+    .sw-bulk-tools button { flex: 1; font-size: 10px; padding: 6px 4px; }
+    .sw-bulk-footer > div > button { flex: 1; }
+}
+@media (max-height: 550px) {
+    .sw-bulk-filters { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+    .sw-bulk-hint { display: none; }
+    .sw-bulk-scroll { min-height: 0; }
+    .sw-bulk-cleanup { gap: 4px; }
+    .sw-bulk-footer { padding-top: 4px; }
+    .sw-bulk-status { display: none; }
+}
+
 .sw-distribute { display: flex; flex-direction: column; gap: 12px; min-height: 0; width: 100%; }
 .sw-dist-section {
     display: flex; flex-direction: column; gap: 8px; padding: 12px;

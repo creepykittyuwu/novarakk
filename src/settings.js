@@ -126,9 +126,10 @@ export const defaultSettings = Object.freeze({
     novelaiModel: 'nai-diffusion-4-5-full',
     novelaiCustomModel: '',
     novelaiSampler: 'k_euler_ancestral',
-    novelaiScheduler: 'karras',
+    novelaiScheduler: 'native',
     novelaiSteps: 28,
     novelaiScale: 5,
+    novelaiCfgRescale: 0,
     novelaiSize: 'Portrait',
     novelaiNegativePrompt: DEFAULT_NOVELAI_NEGATIVE_PROMPT,
     novelaiNegativePresets: [{
@@ -269,6 +270,7 @@ export const CONNECTION_FIELDS = Object.freeze([
     'novelaiScheduler',
     'novelaiSteps',
     'novelaiScale',
+    'novelaiCfgRescale',
     'novelaiSize',
     'novelaiNegativePrompt',
     'novelaiAnlasGuard',
@@ -511,6 +513,7 @@ export const NAISTERA_MODELS = Object.freeze([
 ]);
 export const NOVELAI_MODELS = Object.freeze([
     { value: 'nai-diffusion-5-full', text: 'NAI Diffusion V5 (Full)' },
+    { value: 'nai-diffusion-5-full-medium', text: 'NAI Diffusion V5 (Full Medium)' },
     { value: 'nai-diffusion-5-curated', text: 'NAI Diffusion V5 (Curated)' },
     { value: 'nai-diffusion-4-5-full', text: 'NAI Diffusion V4.5 (Full)' },
     { value: 'nai-diffusion-4-5-curated', text: 'NAI Diffusion V4.5 (Curated)' },

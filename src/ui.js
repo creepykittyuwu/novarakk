@@ -33,6 +33,7 @@ import {
     buildApiSettingsSectionHtml,
     bindConnectionProfilesEvents,
     bindApiSectionEvents,
+    syncNovelaiModelControls,
 } from './ui/apiSection.js';
 import {
     buildReferencesSettingsSectionHtml,
@@ -71,6 +72,7 @@ function buildUpdateVisibility(settings) {
         const isVoid = apiType === 'void';
         const isAIGate = apiType === 'aigate';
         const isNovelAI = apiType === 'novelai';
+        syncNovelaiModelControls(settings);
 
         // Поддерживает ли активный провайдер референсы (учитывая модель).
         const provider = resolveActiveProvider(settings);
