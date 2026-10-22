@@ -25,6 +25,8 @@ import {
 } from './utils.js';
 import { callVisionApi, DEFAULT_VISION_PROMPT } from './vision.js';
 import { renderWardrobeBulkCleanup } from './wardrobeBulkUi.js';
+import { SW_CATALOG_DEFAULT_URL, catalogResolveType } from './wardrobeCatalog.js';
+import { openWardrobeCatalog, fetchCatalogImageBlob } from './wardrobeCatalogUi.js';
 
 // ── Constants ──
 
@@ -59,6 +61,8 @@ const SW_TYPE_ICONS = [
     'fa-vest', 'fa-socks', 'fa-shoe-prints', 'fa-glasses', 'fa-ring',
     'fa-user-tie', 'fa-user-ninja', 'fa-mask', 'fa-snowflake', 'fa-sun',
     'fa-heart', 'fa-star', 'fa-wand-magic-sparkles', 'fa-dragon',
+    'fa-leaf', 'fa-seedling', 'fa-champagne-glasses', 'fa-ghost', 'fa-landmark',
+    'fa-gears', 'fa-torii-gate', 'fa-moon', 'fa-masks-theater',
 ];
 
 const swDefaults = Object.freeze({
@@ -77,6 +81,7 @@ const swDefaults = Object.freeze({
     generationProfileId: '',
     generationModel: '',
     generationImageSize: '',
+    catalogUrl: '',
 });
 
 // ── Settings ──
@@ -327,6 +332,21 @@ function swTypes() { return swGetSettings().outfitTypes; }
 function swTypeIds() { return swTypes().map(t => t.id); }
 function swTypeOf(o) { return (o && swTypeIds().includes(o.type)) ? o.type : SW_FALLBACK_TYPE; }
 function swTypeMeta(id) { const ts = swTypes(); return ts.find(t => t.id === id) || ts.find(t => t.id === SW_FALLBACK_TYPE) || ts[ts.length - 1]; }
+
+function swEnsureCatalogType(key) {
+    if (!String(key || '').trim()) return { id: SW_FALLBACK_TYPE, created: false };
+    const s = swGetSettings();
+    const { suggestion, existing } = catalogResolveType(key, s.outfitTypes);
+    if (existing) return { id: existing.id, created: false };
+    const label = String(key).trim();
+    const tag = suggestion.builtin
+        ? { id: suggestion.id, label: label.charAt(0).toLocaleUpperCase() + label.slice(1, 24), icon: SW_DEFAULT_TYPES.find(t => t.id === suggestion.id)?.icon || 'fa-tag' }
+        : { id: suggestion.id, label: suggestion.label, icon: suggestion.icon };
+    const fb = s.outfitTypes.findIndex(t => t.id === SW_FALLBACK_TYPE);
+    if (fb >= 0) s.outfitTypes.splice(fb, 0, tag); else s.outfitTypes.push(tag);
+    swSave();
+    return { id: tag.id, created: true };
+}
 
 function swPlural(n, one, few, many) {
     const m10 = n % 10, m100 = n % 100;
@@ -735,6 +755,7 @@ async function swMigrateToSharedUnlocked(side, { silent = false } = {}) {
                 addedAt: o.addedAt || Date.now(),
             };
             if (o.tryOnSide) item.tryOnSide = o.tryOnSide;
+            if (o.catalogId) item.catalogId = o.catalogId;
 
             let stored = false;
             if (o.imagePath && !o.base64) {
@@ -1286,6 +1307,7 @@ function swRender() {
         h += `<div class="sw-mode-row">
             <div class="sw-mode-btn ${!useShared ? 'sw-mode-active' : ''}" data-mode="perc" title="${personalTitle}"><i class="fa-solid fa-user"></i> ${personalLabel}</div>
             <div class="sw-mode-btn ${useShared ? 'sw-mode-active' : ''}" data-mode="shared"><i class="fa-solid fa-earth-americas"></i> Общий</div>
+            <div class="sw-mode-btn sw-browse-btn" title="Каталог образов с сайта: выбрать и добавить в этот гардероб"><i class="fa-solid fa-globe"></i> Browse</div>
             <div class="sw-sort-wrap" title="Сортировка">
                 <i class="fa-solid fa-arrow-down-wide-short"></i>
                 <select class="sw-sort-select">${sortOpt('added', 'Недавно добавленные')}${sortOpt('worn', 'Недавно надетые')}${sortOpt('name', 'По имени')}</select>
@@ -1354,8 +1376,10 @@ function swRender() {
         });
     }
 
+    c.querySelector('.sw-browse-btn')?.addEventListener('click', swOpenCatalog);
+
     // Mode buttons
-    for (const b of c.querySelectorAll('.sw-mode-btn')) {
+    for (const b of c.querySelectorAll('.sw-mode-btn[data-mode]')) {
         b.addEventListener('click', async () => {
             const wantShared = b.dataset.mode === 'shared';
             const cfg = swSharedCfg(swTab);
@@ -1451,17 +1475,74 @@ function swEdit(id) {
     swOpenOutfitForm({ mode: 'edit', view: v, item: o });
 }
 
-function swOpenOutfitForm({ mode, view, base64 = null, item = null, defaultName = '' }) {
+// ── Catalog (Browse) ──
+
+async function swCatalogImageBase64(outfit) {
+    const blob = await fetchCatalogImageBlob(outfit.img);
+    const { base64 } = await swResize(blob, swGetSettings().maxDimension);
+    return base64;
+}
+
+async function swCatalogQuickAdd(view, outfit) {
+    const base64 = await swCatalogImageBase64(outfit);
+    const { id: type } = swEnsureCatalogType(outfit.key);
+    const newItem = { id: uid(), name: outfit.name, type, description: outfit.desc, addedAt: Date.now(), catalogId: outfit.id };
+    let stored = false;
+    if (view.shared) {
+        try {
+            const jpeg = await swCompressBase64Image(base64, swGetSettings().maxDimension, 0.82);
+            newItem.imagePath = await swSaveRefImageToFile(jpeg, (view.side === 'bot' ? 'sw_bot_' : 'sw_user_') + outfit.name);
+            stored = true;
+        } catch (err) { iigLog('WARN', 'catalog file store failed, fallback to base64:', err.message); }
+    }
+    if (!stored) newItem.base64 = base64;
+    view.add(newItem);
+    if (view.shared) swPreloadSharedActive(view.side);
+    else await swMigrateToShared(view.side, { silent: true });
+    swSort = 'added'; swPage = 0;
+    swRender(); swUpdatePromptInjection(); swInjectBarBtn();
+    toastr.success(`«${outfit.name}» добавлен`, 'Гардероб', { timeOut: 2000 });
+}
+
+function swOpenCatalog() {
+    const v = swCurrentView();
+    const side = swTab === 'bot' ? `Бот (${swCharName()})` : `Юзер (${swPersonaLabel()})`;
+    const handle = openWardrobeCatalog({
+        url: swGetSettings().catalogUrl,
+        targetLabel: `${side}${v.shared ? ' · общий' : ''}`,
+        getTypes: swTypes,
+        addedIds: () => new Set((swCurrentView().list() || []).map(o => o.catalogId).filter(Boolean)),
+        syncTypes: (keys) => {
+            const created = keys.filter(key => swEnsureCatalogType(key).created).length;
+            if (created && swOpen) swRender();
+            return created;
+        },
+        quickAdd: (outfit) => swCatalogQuickAdd(swCurrentView(), outfit),
+        pick: async (outfit) => {
+            try {
+                const base64 = await swCatalogImageBase64(outfit);
+                const { id: type } = swEnsureCatalogType(outfit.key);
+                swOpenOutfitForm({
+                    mode: 'add', view: swCurrentView(), base64,
+                    defaultName: outfit.name, defaultType: type, defaultDesc: outfit.desc,
+                    catalogId: outfit.id, onSaved: () => handle.refresh(),
+                });
+            } catch (e) { toastr.error('Не удалось загрузить картинку: ' + e.message, 'Каталог образов'); }
+        },
+    });
+}
+
+function swOpenOutfitForm({ mode, view, base64 = null, item = null, defaultName = '', defaultType = '', defaultDesc = '', catalogId = '', onSaved = null }) {
     document.getElementById('sw-form-overlay')?.remove();
     const isEdit = mode === 'edit';
     const isGen = mode === 'gen';
     const isBuild = mode === 'build';
     const isGeneratedMode = isGen || isBuild;
     const buildSlots = isBuild ? SW_DEFAULT_BUILD_SLOTS.map(label => ({ id: uid(), label, base64: null, fileName: '' })) : [];
-    const curType = isEdit ? swTypeOf(item) : (swTypeIds().includes(swFilter) ? swFilter : 'other');
+    const curType = isEdit ? swTypeOf(item) : (swTypeIds().includes(defaultType) ? defaultType : (swTypeIds().includes(swFilter) ? swFilter : 'other'));
     let previewSrc = isEdit ? swImgSrc(item) : (base64 ? 'data:image/png;base64,' + base64 : '');
     const curName = isEdit ? (item.name || '') : (defaultName || '');
-    const curDesc = isEdit ? swSanitizeDesc(item.description) : '';
+    const curDesc = isEdit ? swSanitizeDesc(item.description) : swSanitizeDesc(defaultDesc);
 
     const stCtx = SillyTavern.getContext();
     const charNm = swCharName() || 'персонаж';
@@ -1748,6 +1829,7 @@ function swOpenOutfitForm({ mode, view, base64 = null, item = null, defaultName 
                 if (view.shared) swPreloadSharedActive(view.side);
             } else {
                 const newItem = { id: uid(), name, type, description: desc, addedAt: Date.now() };
+                if (catalogId) newItem.catalogId = catalogId;
                 const imgB64 = useGen ? genB64 : origB64;
                 if (useGen && genSide && saveAsTryOn) newItem.tryOnSide = genSide;
                 if (view.shared) {
@@ -1769,6 +1851,7 @@ function swOpenOutfitForm({ mode, view, base64 = null, item = null, defaultName 
             }
             close();
             swRender(); swUpdatePromptInjection(); swInjectBarBtn();
+            onSaved?.();
             toastr.success(isEdit ? 'Обновлён' : `«${name}» добавлен`, 'Гардероб', { timeOut: 2000 });
         } catch (e) {
             toastr.error('Ошибка: ' + e.message, 'Гардероб');
@@ -1832,6 +1915,12 @@ function swOpenQuickSettings() {
                 </div>
             </div>
 
+            <div class="sw-quick-row">
+                <label><i class="fa-solid fa-globe"></i> Каталог образов (Browse)</label>
+                <input type="text" id="sw-q-catalog-url" class="text_pole" value="${esc(swGetSettings().catalogUrl || '')}" placeholder="${esc(SW_CATALOG_DEFAULT_URL)}">
+                <div class="sw-quick-hint">Сайт-гардероб с файлом <code>wardrobe.json</code>. Пусто — каталог по умолчанию.</div>
+            </div>
+
             <div class="sw-quick-tags">
                 <label class="sw-quick-tags-title"><i class="fa-solid fa-tags"></i> Теги одежды</label>
                 <div class="sw-tags-list" id="sw-tags-list"></div>
@@ -1888,6 +1977,9 @@ function swOpenQuickSettings() {
     bindPrompt('#sw-q-genlook-prompt', '#sw-q-genlook-reset', 'genLookPrompt', SW_DEFAULT_GENLOOK_PROMPT, 'Промт образа сброшен');
     panel.querySelector('#sw-q-tryon-avatar')?.addEventListener('change', (e) => {
         swGetSettings().tryOnAsAvatar = e.target.checked; swSave();
+    });
+    panel.querySelector('#sw-q-catalog-url')?.addEventListener('input', (e) => {
+        swGetSettings().catalogUrl = e.target.value.trim(); swSave();
     });
 
     const save = () => ctx.saveSettingsDebounced();
