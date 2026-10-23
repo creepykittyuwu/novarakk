@@ -25,7 +25,7 @@ import {
 } from './utils.js';
 import { callVisionApi, DEFAULT_VISION_PROMPT } from './vision.js';
 import { renderWardrobeBulkCleanup } from './wardrobeBulkUi.js';
-import { SW_CATALOG_DEFAULT_URL, catalogResolveType } from './wardrobeCatalog.js';
+import { SW_CATALOG_DEFAULT_URLS, catalogResolveType } from './wardrobeCatalog.js';
 import { openWardrobeCatalog, fetchCatalogImageBlob } from './wardrobeCatalogUi.js';
 
 // ── Constants ──
@@ -63,6 +63,7 @@ const SW_TYPE_ICONS = [
     'fa-heart', 'fa-star', 'fa-wand-magic-sparkles', 'fa-dragon',
     'fa-leaf', 'fa-seedling', 'fa-champagne-glasses', 'fa-ghost', 'fa-landmark',
     'fa-gears', 'fa-torii-gate', 'fa-moon', 'fa-masks-theater',
+    'fa-droplet', 'fa-hat-wizard', 'fa-carrot',
 ];
 
 const swDefaults = Object.freeze({
@@ -1917,8 +1918,8 @@ function swOpenQuickSettings() {
 
             <div class="sw-quick-row">
                 <label><i class="fa-solid fa-globe"></i> Каталог образов (Browse)</label>
-                <input type="text" id="sw-q-catalog-url" class="text_pole" value="${esc(swGetSettings().catalogUrl || '')}" placeholder="${esc(SW_CATALOG_DEFAULT_URL)}">
-                <div class="sw-quick-hint">Сайт-гардероб с файлом <code>wardrobe.json</code>. Пусто — каталог по умолчанию.</div>
+                <textarea id="sw-q-catalog-url" class="text_pole" rows="3" placeholder="${esc(SW_CATALOG_DEFAULT_URLS.join('\n'))}">${esc(swGetSettings().catalogUrl || '')}</textarea>
+                <div class="sw-quick-hint">Сайты-гардеробы с файлом <code>wardrobe.json</code>, по одному на строку. Пусто — сайты по умолчанию: ${SW_CATALOG_DEFAULT_URLS.map(url => esc(url.replace(/^https:\/\//, ''))).join(', ')}.</div>
             </div>
 
             <div class="sw-quick-tags">
