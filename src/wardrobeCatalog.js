@@ -103,6 +103,13 @@ export function catalogResolveType(key, types) {
     return { suggestion, existing: found || null };
 }
 
+export function catalogStripHair(desc) {
+    return String(desc || '')
+        .replace(/(^|[\s.])(?:hairstyle|hair(?:\s+and\s+makeup)?)\s*:[^.]*(?:\.|$)/gi, '$1')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 export function catalogOutfitName(desc, fallback = '') {
     const text = String(desc || '').replace(/\s+/g, ' ').trim();
     const outfit = (text.match(/outfit:\s*([^.]*)/i)?.[1]
@@ -146,7 +153,7 @@ export function parseCatalogData(data, siteUrl, source = { key: '', label: '' })
         const img = absolute(item?.img);
         if (!item?.id || !img) continue;
         const cat = catById.get(item.cat) || null;
-        const desc = String(item.desc || '').replace(/\s+/g, ' ').trim();
+        const desc = catalogStripHair(item.desc);
         outfits.push({
             id: String(item.id),
             img,

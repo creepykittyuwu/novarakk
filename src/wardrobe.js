@@ -25,7 +25,7 @@ import {
 } from './utils.js';
 import { callVisionApi, DEFAULT_VISION_PROMPT } from './vision.js';
 import { renderWardrobeBulkCleanup } from './wardrobeBulkUi.js';
-import { SW_CATALOG_DEFAULT_URLS, catalogResolveType } from './wardrobeCatalog.js';
+import { SW_CATALOG_DEFAULT_URLS, catalogResolveType, catalogStripHair } from './wardrobeCatalog.js';
 import { openWardrobeCatalog, fetchCatalogImageBlob } from './wardrobeCatalogUi.js';
 
 // ── Constants ──
@@ -2626,6 +2626,11 @@ const SW_INJECT_DEPTH = 0;
 const SW_INJECT_ROLE = 0;
 const SW_INJECT_SCAN = false;
 
+function swPromptDesc(o) {
+    const desc = swSanitizeDesc(o?.description);
+    return o?.catalogId ? catalogStripHair(desc) : desc;
+}
+
 function swBuildInjectionText(cn) {
     const botData = swGetActiveBotOutfit();
     const userData = swGetActiveUserOutfit();
@@ -2633,12 +2638,12 @@ function swBuildInjectionText(cn) {
 
     const parts = [];
     if (botData) {
-        const desc = swSanitizeDesc(botData.description);
+        const desc = swPromptDesc(botData);
         const label = desc || botData.name || 'неизвестный наряд';
         parts.push(`${cn}: ${label}`);
     }
     if (userData) {
-        const desc = swSanitizeDesc(userData.description);
+        const desc = swPromptDesc(userData);
         const label = desc || userData.name || 'неизвестный наряд';
         parts.push(`{{user}}: ${label}`);
     }
@@ -2777,7 +2782,7 @@ export function swFindItem(id) {
 export function swBuildDescription(type) {
     const outfit = swGetActiveSideOutfit(type);
     if (!outfit) return '';
-    return swSanitizeDesc(outfit.description) || '';
+    return swPromptDesc(outfit) || '';
 }
 
 export async function getActiveOutfitBase64(type) {

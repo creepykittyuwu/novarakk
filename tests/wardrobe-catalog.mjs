@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {
     catalogUrls, catalogSources, catalogCategoryKey, catalogTypeSuggestion, catalogResolveType,
-    catalogOutfitName, parseCatalogData, mergeCatalogs, filterCatalog, SW_CATALOG_DEFAULT_URLS,
+    catalogOutfitName, catalogStripHair, parseCatalogData, mergeCatalogs, filterCatalog, SW_CATALOG_DEFAULT_URLS,
 } from '../src/wardrobeCatalog.js';
 
 const [creepy, kiska] = SW_CATALOG_DEFAULT_URLS;
@@ -47,6 +47,11 @@ assert.equal(catalogOutfitName('Main color: Ivory. Dress: Off-the-shoulder corse
 assert.equal(catalogOutfitName('The outfit consists of a dark chocolate-brown cropped lace-up blouse made from sheer fabric.'), 'Dark chocolate-brown cropped lace-up blouse');
 assert.equal(catalogOutfitName('Main color: Violet. Dress: A short, plunging velvet dress.'), 'Short plunging velvet dress');
 assert.equal(catalogOutfitName('', 'summer'), 'summer');
+
+assert.equal(catalogStripHair('Dress: Red gown. Hairstyle: Long copper-red hair with bangs. Accessories: Black hair bow.'),
+    'Dress: Red gown. Accessories: Black hair bow.');
+assert.equal(catalogStripHair('Top: White tee. Hairstyle: Pink curls'), 'Top: White tee.');
+assert.equal(catalogStripHair('Hair: Ginger bun. Shoes: Boots.'), 'Shoes: Boots.');
 
 const data = {
     chars: [{ id: 'ch1', name: 'Nielle', img: 'images/ch1.jpg' }, { id: 'ch2', name: 'Zion', img: '' }, { id: 'ch3', name: 'Empty' }],
