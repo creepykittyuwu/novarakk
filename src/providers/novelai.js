@@ -22,7 +22,7 @@ import {
 } from '../utils.js';
 import { buildFinalGenerationPrompt } from '../parser.js';
 import { collectPreviousContextReferences } from '../references.js';
-import { collectAvatarReferences, collectExtraReferences, mergeAvatarReferenceGroups } from '../extras.js';
+import { collectAvatarReferences, collectExtraReferenceObjects, mergeAvatarReferenceGroups } from '../extras.js';
 import { Provider, throwAsProviderError } from './base.js';
 import { resolveNovelaiModel, getNovelaiModelCapabilities, clampNovelaiNumber } from './novelaiParams.js';
 
@@ -114,9 +114,12 @@ export class NovelAIProvider extends Provider {
         if (settings.sendUserAvatar) avatarGroups.push(await collectAvatarReferences('user', 'base64', prompt, settings));
         refs.push(...mergeAvatarReferenceGroups(avatarGroups, maxRefs));
 
-        for (const extra of await collectExtraReferences(prompt, 'base64', settings)) {
+        // Precise Reference copies the whole character, so a catalog outfit photo would
+        // replace the character's face and hair with the site model's; its text description is used instead.
+        for (const extra of await collectExtraReferenceObjects(prompt, 'base64', settings)) {
             if (refs.length >= maxRefs) break;
-            refs.push(extra);
+            if (extra.catalog) continue;
+            refs.push(extra.image);
         }
 
         for (const ref of matchedAdditionalRefs) {

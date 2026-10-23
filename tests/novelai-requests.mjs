@@ -24,6 +24,7 @@ const rulesSource = await fs.readFile(new URL('../src/providers/novelaiParams.js
 const uiSource = await fs.readFile(new URL('../src/ui/apiSection.js', import.meta.url), 'utf8');
 let globalSettings = defaults;
 let referenceFetches = 0;
+let extraReferenceObjects = [];
 const requests = [];
 const nodes = new Map();
 const makeNode = () => ({
@@ -63,7 +64,7 @@ const stubs = {
         prompt + (options.includeReferencePromptBlocks ? '|REFERENCE TEXT|' : ''),
     collectPreviousContextReferences: async () => { referenceFetches++; return []; },
     collectAvatarReferences: async () => { referenceFetches++; return []; },
-    collectExtraReferences: async () => { referenceFetches++; return []; },
+    collectExtraReferenceObjects: async () => { referenceFetches++; return extraReferenceObjects; },
     mergeAvatarReferenceGroups: groups => groups.flat(),
     imageUrlToBase64: async () => { referenceFetches++; return 'fake'; },
     normalizeStoredImagePath: path => path,
@@ -143,6 +144,16 @@ for (const model of ['nai-diffusion-5-full', 'nai-diffusion-5-curated', 'nai-dif
     assert.equal(nodes.get('iig_novelai_negative_presets').hiddenClasses.has('iig-hidden'), caps.medium);
     assert.equal(settings.novelaiSteps, 42, 'UI must preserve stored values');
 }
+
+// A catalog outfit photo shows another character; Precise Reference would copy their face and hair.
+extraReferenceObjects = [
+    { image: 'OWN_OUTFIT', kind: 'outfit-char', name: '' },
+    { image: 'SITE_OUTFIT', kind: 'outfit-user', name: '', catalog: true },
+];
+const outfitRefs = await provider.collectReferences({ prompt: 'scene',
+    providerOptions: { providerSettings: { ...defaults, novelaiModel: 'nai-diffusion-4-5-full' } } });
+assert.deepEqual(outfitRefs, ['OWN_OUTFIT']);
+extraReferenceObjects = [];
 
 // Both the selector and a custom ID must enforce Medium's constraints.
 const custom = { ...defaults, novelaiModel: '__custom__', novelaiCustomModel: 'nai-diffusion-5-full-medium' };

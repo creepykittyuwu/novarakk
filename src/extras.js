@@ -401,14 +401,14 @@ export async function collectExtraReferenceObjects(prompt, format = 'base64', se
             && (settings.apiType === 'naistera' ? settings.naisteraSendCharAvatar : settings.sendCharAvatar)
             && await shouldSendCharacterLibraryReference('char', prompt, settings);
         const botImg = botTryOnUsedAsAvatar ? null : (await getActiveOutfitBase64('bot') || await getCollageBase64('bot'));
-        if (botImg) refs.push({ image: wrap(botImg), kind: 'outfit-char', name: '' });
+        if (botImg) refs.push({ image: wrap(botImg), kind: 'outfit-char', name: '', catalog: !!getActiveOutfitData('bot')?.catalogId });
     }
     if (settings.swSendOutfitImageUser !== false && userOutfitAllowed) {
         const userTryOnUsedAsAvatar = isActiveOutfitTryOn('user')
             && (settings.apiType === 'naistera' ? settings.naisteraSendUserAvatar : settings.sendUserAvatar)
             && await shouldSendCharacterLibraryReference('user', prompt, settings);
         const userImg = userTryOnUsedAsAvatar ? null : (await getActiveOutfitBase64('user') || await getCollageBase64('user'));
-        if (userImg) refs.push({ image: wrap(userImg), kind: 'outfit-user', name: '' });
+        if (userImg) refs.push({ image: wrap(userImg), kind: 'outfit-user', name: '', catalog: !!getActiveOutfitData('user')?.catalogId });
     }
 
     return refs;
