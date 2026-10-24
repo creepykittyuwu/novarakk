@@ -2,6 +2,7 @@ import {
     catalogSources,
     catalogResolveType,
     parseCatalogData,
+    normalizeCatalogData,
     mergeCatalogs,
     filterCatalog,
 } from './wardrobeCatalog.js';
@@ -33,14 +34,25 @@ function writeCache(dataUrl, data, meta = {}) {
     }
 }
 
-async function fetchCatalog(dataUrl, cached = null, force = false) {
+async function fetchOptionalJson(url) {
+    try {
+        const response = await fetch(url, { cache: 'no-cache' });
+        return response.ok ? await response.json() : null;
+    } catch {
+        return null;
+    }
+}
+
+async function fetchCatalog(source, cached = null, force = false) {
+    const dataUrl = source.data;
     const headers = {};
     if (!force && cached?.etag) headers['If-None-Match'] = cached.etag;
     if (!force && cached?.lastModified) headers['If-Modified-Since'] = cached.lastModified;
     const response = await fetch(dataUrl, { headers, cache: 'no-cache' });
     if (response.status === 304 && cached) return { data: cached.data, notModified: true };
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    let data = await response.json();
+    if (Array.isArray(data)) data = normalizeCatalogData(data, await fetchOptionalJson(source.site + 'characters.json'));
     writeCache(dataUrl, data, {
         etag: response.headers.get('ETag') || '',
         lastModified: response.headers.get('Last-Modified') || '',
@@ -305,7 +317,7 @@ export function openWardrobeCatalog(adapters) {
             if (Date.now() - (cached.ts || 0) <= SW_CATALOG_CACHE_TTL_MS) return false;
         }
         try {
-            const result = await fetchCatalog(source.data, cached, force);
+            const result = await fetchCatalog(source, cached, force);
             datasets.set(source.key, result.data);
             errors.delete(source.key);
             return !result.notModified;

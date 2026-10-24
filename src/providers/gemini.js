@@ -149,9 +149,9 @@ export class GeminiProvider extends Provider {
             if (extra.kind === 'npc') {
                 description = `is ${extra.name} — preserve this appearance exactly`;
             } else if (extra.kind === 'outfit-char') {
-                description = `shows ${charName}'s current OUTFIT — dress the character in this exact clothing. Use it ONLY for clothing, shoes and accessories: do NOT copy the face, hair colour or hairstyle of whoever wears it; ${charName}'s identity and hair come from the avatar reference`;
+                description = `shows ${charName}'s current OUTFIT — dress the character in this exact clothing. Do NOT copy the face or hair colour of whoever wears it; ${charName}'s identity and hair colour come from the avatar reference`;
             } else if (extra.kind === 'outfit-user') {
-                description = `shows ${userName}'s current OUTFIT — dress them in this exact clothing. Use it ONLY for clothing, shoes and accessories: do NOT copy the face, hair colour or hairstyle of whoever wears it; ${userName}'s identity and hair come from the avatar reference`;
+                description = `shows ${userName}'s current OUTFIT — dress them in this exact clothing. Do NOT copy the face or hair colour of whoever wears it; ${userName}'s identity and hair colour come from the avatar reference`;
             }
             refs.push(makeReferenceObject(extra.image, description, extra.kind));
         }

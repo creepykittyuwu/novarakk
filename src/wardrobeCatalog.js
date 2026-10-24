@@ -1,11 +1,14 @@
 /**
- * Каталог образов с внешних сайтов-гардеробов (формат creepykittyuwu/wardrobe):
- * wardrobe.json → { chars, cats, items }. Чистая логика без DOM и SillyTavern.
+ * Каталог образов с внешних сайтов-гардеробов. Два формата:
+ * creepykittyuwu/wardrobe — wardrobe.json → { chars, cats, items };
+ * smokimioki/wardrobe — wardrobe.json → [items] + characters.json.
+ * Чистая логика без DOM и SillyTavern.
  */
 
 export const SW_CATALOG_DEFAULT_URLS = [
     'https://creepykittyuwu.github.io/wardrobe/',
     'https://kiskasora.github.io/wardrobe/',
+    'https://smokimioki.github.io/wardrobe/',
 ];
 
 const SW_CATALOG_ALIASES = {
@@ -103,11 +106,29 @@ export function catalogResolveType(key, types) {
     return { suggestion, existing: found || null };
 }
 
-export function catalogStripHair(desc) {
-    return String(desc || '')
-        .replace(/(^|[\s.])(?:hairstyle|hair(?:\s+and\s+makeup)?)\s*:[^.]*(?:\.|$)/gi, '$1')
-        .replace(/\s+/g, ' ')
-        .trim();
+export function normalizeCatalogData(items, meta = null) {
+    if (!Array.isArray(items)) return items;
+    const chars = (Array.isArray(meta?.characters) ? meta.characters : [])
+        .filter(c => c && c.id)
+        .map(c => ({ id: String(c.id), name: String(c.name || '').trim(), img: c.cover || c.img || '' }));
+    const cats = [];
+    const catId = (charId, name) => {
+        const id = `${charId}|${name}`;
+        if (!cats.some(c => c.id === id)) cats.push({ id, name, char: charId });
+        return id;
+    };
+    return {
+        chars,
+        cats,
+        items: items.filter(e => e && e.id).map(e => ({
+            id: String(e.id),
+            cat: catId(String(e.char || ''), String(e.cat || '').trim()),
+            name: String(e.name || '').trim(),
+            desc: e.note || e.desc || '',
+            img: (Array.isArray(e.images) ? e.images[0] : e.img) || '',
+            fav: !!e.fav,
+        })),
+    };
 }
 
 export function catalogOutfitName(desc, fallback = '') {
@@ -153,7 +174,7 @@ export function parseCatalogData(data, siteUrl, source = { key: '', label: '' })
         const img = absolute(item?.img);
         if (!item?.id || !img) continue;
         const cat = catById.get(item.cat) || null;
-        const desc = catalogStripHair(item.desc);
+        const desc = String(item.desc || '').replace(/\s+/g, ' ').trim();
         outfits.push({
             id: String(item.id),
             img,
@@ -165,7 +186,7 @@ export function parseCatalogData(data, siteUrl, source = { key: '', label: '' })
             charName: cat?.owner?.name || '',
             source: source.key,
             sourceLabel: source.label,
-            name: catalogOutfitName(desc, cat?.key || 'Образ'),
+            name: String(item.name || '').trim() || catalogOutfitName(desc, cat?.key || 'Образ'),
         });
     }
     const usedChars = new Set(outfits.map(o => o.charId));

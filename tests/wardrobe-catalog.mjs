@@ -3,19 +3,19 @@
 import assert from 'node:assert/strict';
 import {
     catalogUrls, catalogSources, catalogCategoryKey, catalogTypeSuggestion, catalogResolveType,
-    catalogOutfitName, catalogStripHair, parseCatalogData, mergeCatalogs, filterCatalog, SW_CATALOG_DEFAULT_URLS,
+    catalogOutfitName, normalizeCatalogData, parseCatalogData, mergeCatalogs, filterCatalog, SW_CATALOG_DEFAULT_URLS,
 } from '../src/wardrobeCatalog.js';
 
-const [creepy, kiska] = SW_CATALOG_DEFAULT_URLS;
+const [creepy, kiska, smoki] = SW_CATALOG_DEFAULT_URLS;
 assert.deepEqual(catalogUrls(''), { site: creepy, data: creepy + 'wardrobe.json' });
 assert.deepEqual(catalogUrls('example.github.io/w'), { site: 'https://example.github.io/w/', data: 'https://example.github.io/w/wardrobe.json' });
 assert.deepEqual(catalogUrls('https://x.io/a/index.html?q=1'), { site: 'https://x.io/a/', data: 'https://x.io/a/wardrobe.json' });
 assert.deepEqual(catalogUrls('https://x.io/a/data.json'), { site: 'https://x.io/a/', data: 'https://x.io/a/data.json' });
 
 const defaults = catalogSources('');
-assert.deepEqual(defaults.map(s => s.label), ['creepykittyuwu', 'kiskasora']);
-assert.deepEqual(defaults.map(s => s.site), [creepy, kiska]);
-assert.notEqual(defaults[0].key, defaults[1].key);
+assert.deepEqual(defaults.map(s => s.label), ['creepykittyuwu', 'kiskasora', 'smokimioki']);
+assert.deepEqual(defaults.map(s => s.site), [creepy, kiska, smoki]);
+assert.equal(new Set(defaults.map(s => s.key)).size, 3);
 const custom = catalogSources(`${kiska}\n kiskasora.github.io/wardrobe , https://shop.example.com/w/data.json`);
 assert.deepEqual(custom.map(s => s.label), ['kiskasora', 'shop.example.com']);
 
@@ -48,10 +48,6 @@ assert.equal(catalogOutfitName('The outfit consists of a dark chocolate-brown cr
 assert.equal(catalogOutfitName('Main color: Violet. Dress: A short, plunging velvet dress.'), 'Short plunging velvet dress');
 assert.equal(catalogOutfitName('', 'summer'), 'summer');
 
-assert.equal(catalogStripHair('Dress: Red gown. Hairstyle: Long copper-red hair with bangs. Accessories: Black hair bow.'),
-    'Dress: Red gown. Accessories: Black hair bow.');
-assert.equal(catalogStripHair('Top: White tee. Hairstyle: Pink curls'), 'Top: White tee.');
-assert.equal(catalogStripHair('Hair: Ginger bun. Shoes: Boots.'), 'Shoes: Boots.');
 
 const data = {
     chars: [{ id: 'ch1', name: 'Nielle', img: 'images/ch1.jpg' }, { id: 'ch2', name: 'Zion', img: '' }, { id: 'ch3', name: 'Empty' }],
@@ -88,5 +84,23 @@ assert.equal(merged.outfits.length, 3);
 assert.equal(filterCatalog(merged.outfits, { source: 'b' })[0].sourceLabel, 'B');
 assert.equal(filterCatalog(merged.outfits, { charId: 'b:ch1' })[0].id, 'i9');
 assert.equal(filterCatalog(merged.outfits, { source: 'a', key: 'casual' }).length, 0);
+
+const hairDesc = 'Dress: Red gown. Hairstyle: Long wavy hair with bangs.';
+assert.equal(parseCatalogData({ chars: [], cats: [], items: [{ id: 'h1', cat: '', desc: hairDesc, img: 'a.jpg' }] }, 'https://x/')
+    .outfits[0].desc, hairDesc, 'hairstyle stays in catalog descriptions');
+
+// smokimioki format: wardrobe.json is an item array, characters live in characters.json.
+const listFormat = normalizeCatalogData([
+    { id: 'mv1', name: 'Костюм', char: 'cm1', cat: 'Old Money', note: 'Ivory cape blouse and trousers.', images: ['img/mv1-a.webp', 'img/mv1-b.webp'] },
+    { id: 'mv2', name: '', char: 'gone', cat: 'Old Money', note: 'Outfit: Black slip dress.', images: [] },
+    { id: 'mv3', char: 'cm1', cat: 'Обувь', note: 'Heels.', images: ['img/mv3.webp'] },
+], { characters: [{ id: 'cm1', name: 'Смокши', cover: 'img/cm1.webp' }], cats: ['Old Money'] });
+const smokiParsed = parseCatalogData(listFormat, 'https://smokimioki.github.io/wardrobe/', { key: 's', label: 'smokimioki' });
+assert.deepEqual(smokiParsed.chars.map(c => [c.id, c.name, c.img]), [['s:cm1', 'Смокши', 'https://smokimioki.github.io/wardrobe/img/cm1.webp']]);
+assert.deepEqual(smokiParsed.outfits.map(o => [o.id, o.name, o.key, o.charName]), [['mv1', 'Костюм', 'Old Money', 'Смокши'], ['mv3', 'Heels', 'Обувь', 'Смокши']]);
+assert.equal(smokiParsed.outfits[0].img, 'https://smokimioki.github.io/wardrobe/img/mv1-a.webp');
+assert.equal(smokiParsed.outfits[0].desc, 'Ivory cape blouse and trousers.');
+assert.deepEqual(normalizeCatalogData([{ id: 'x', char: 'c', cat: 'A', note: '', images: ['i.webp'] }]).chars, [], 'characters.json is optional');
+assert.equal(normalizeCatalogData(data), data, 'object format passes through');
 
 console.log('wardrobe-catalog: PASS');
